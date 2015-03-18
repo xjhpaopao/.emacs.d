@@ -77,6 +77,7 @@ ARCHIVE is the string name of the package archive.")
 ;; TODO: in half a year, I will remove gnu elpa because emacs 24.3 is the minimum version
 (setq package-archives '(("melpa" . "http://melpa.org/packages/")
                          ("melpa-stable" . "http://stable.melpa.org/packages/")
+                         ("melpa-milkbox" . "http://melpa.milkbox.net/packages/")
                          ))
 
 ;; Un-comment below line if you download zip file from https://github.com/redguardtoo/myelpa/archive/master.zip and extract its content into ~/myelpa/
@@ -142,12 +143,13 @@ ARCHIVE is the string name of the package archive.")
     fakir
     erlang
     fancy-narrow
+    cpputils-cmake
     company-c-headers
     company-anaconda
     anaconda-mode
     projectile
     helm-projectile
-    flymake-google-cpplint)
+    function-args)
   "Don't install any Melpa packages except these packages")
 
 ;; Don't take Melpa versions of certain packages
@@ -278,10 +280,11 @@ ARCHIVE is the string name of the package archive.")
   (require-package 'anaconda-mode)
   (require-package 'company-anaconda))
 (require-package 'quack) ;; for scheme
+(require-package 'helm)
 (require-package 'projectile)
 (require-package 'helm-projectile)
 (require-package 'flymake-google-cpplint)
 
-;; (require-package 'command-frequency)
+(require-package 'function-args)
 
 (provide 'init-elpa)

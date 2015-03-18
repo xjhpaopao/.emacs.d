@@ -116,6 +116,16 @@
 (setq projectile-completion-system 'helm)
 (helm-projectile-on)
 
+;auto complete configuration
+(setq company-c-headers-path-user 'projectile-get-project-directories)
+(require 'cc-mode)
+;(define-key c-mode-map [(tab)] 'company-clang)
+;(define-key c++-mode-map [(tab)] 'company-clang)
+
+;function-args
+(require 'function-args)
+(fa-config-default)
+
 ;;search current word
 (define-key isearch-mode-map (kbd "C-*")
   (lambda ()
@@ -131,7 +141,9 @@
 (paren-activate)
 
 ;turn on sematic
-(semantic-mode 1)
+;(global-semanticdb-minor-mode 1)
+;(global-semantic-idle-scheduler-mode 1)
+;(semantic-mode 1)
 ;add sematic to auto complete
 ;(defun my:add-sematic-to-auto-complete ()
 ;  (add-to-list 'ac-sources 'ac-source-semantic))
@@ -145,6 +157,12 @@
 
 (add-to-list 'load-path "~/tools/orgmode/org-mode/lisp")
 (add-to-list 'load-path "~/tools/orgmode/org-mode/contrib/lisp" t)
+;compile helper
+(global-set-key (kbd "<f7>")
+                (lambda ()
+                  (interactive)
+                  (setq-local compilation-read-command nil)
+                  (call-interactively 'compile)))
 ;Cpputils-make
 (add-hook 'c-mode-common-hook
           (lambda ()
@@ -154,6 +172,17 @@
 (add-hook 'c90-mode-hook (lambda () (cppcm-reload-all)))
 ;;special for windows. projectile indexing
 (if *win32* (setq projectile-indexing-method 'alien))
+
+;gdb setting
+(setq
+ ;; use gdb-many-windows by default
+ gdb-many-windows t
+ ;; Non-nil means display source file containing the main routine at startup
+ gdb-show-main t)
+(global-set-key (kbd "<f5>")
+                (lambda ()
+                  (interactive)
+                  (call-interactively 'gdb)))
 
 ;; OPTIONAL, avoid typing full path when starting gdb
 (global-set-key (kbd "C-c C-g")

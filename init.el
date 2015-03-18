@@ -146,6 +146,8 @@
 (require 'quick-jump)
 ;;helm-projectile
 (require 'helm-projectile)
+;;cpputils-cmake
+(require 'cpputils-cmake)
 
 ;; misc has some crucial tools I need immediately
 (require 'init-misc)

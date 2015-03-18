@@ -31,5 +31,17 @@
      (setq company-idle-delay 0.2)
      (setq company-clang-insert-arguments nil)
      ))
+;; change the default color to better view in the dark background
+(deftheme jellybeans
+    "Created 2013-11-05.")
+
+(custom-theme-set-faces
+  'jellybeans
+   '(cursor ((t (:background "#b0d0f0"))))
+
+    '(default ((t (:inherit nil :background "#151515" :foreground "#e8e8d3"))))
+
+     ;; company
+     '(company-tooltip ((t (:background "#606060")))))
 
 (provide 'init-company)
