@@ -17,7 +17,7 @@ For Windows user, please specify the proper home directory in evironment variabl
 Please remove the file "$HOME/.emacs.d/init.el" if it presents
 
 Go to the home directory and run the following command:
-git clone https://github.com/xjhpaopao/emacs.d.git .emacs.d
+git clone https://github.com/xjhpaopao/.emacs.d.git .emacs.d
 
 Ensure that the init.el contained in this repo ends up at ~/.emacs.d/init.el.
 
