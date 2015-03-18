@@ -191,7 +191,7 @@
 (setq cppcm-extra-preprocss-flags-from-user '("-I/usr/src/linux/include" "-DNDEBUG"))
 ;;global bind
 (global-set-key (kbd "C-x C-o") 'ff-find-other-file)
-(global-set-key (kbd "C-c ;") 'iedit-mode)
+(global-set-key (kbd "C-c i") 'iedit-mode)
 (global-set-key (kbd "C-c s") (quote thing-copy-string-to-mark))
 (global-set-key (kbd "C-x C-f") 'helm-find-files)
 (global-set-key (kbd "M-x") 'helm-M-x)
