@@ -1,194 +1,288 @@
-;; -*- coding: utf-8 -*-
-(setq emacs-load-start-time (current-time))
-(add-to-list 'load-path (expand-file-name "~/.emacs.d/lisp"))
+(require 'package)
+(add-to-list 'package-archives
+	     '("melpa" . "http://melpa.milkbox.net/packages/") t)
 
-;;----------------------------------------------------------------------------
-;; Which functionality to enable (use t or nil for true and false)
-;;----------------------------------------------------------------------------
-(setq *macbook-pro-support-enabled* t)
-(setq *is-a-mac* (eq system-type 'darwin))
-(setq *is-carbon-emacs* (and *is-a-mac* (eq window-system 'mac)))
-(setq *is-cocoa-emacs* (and *is-a-mac* (eq window-system 'ns)))
-(setq *win32* (eq system-type 'windows-nt) )
-(setq *cygwin* (eq system-type 'cygwin) )
-(setq *linux* (or (eq system-type 'gnu/linux) (eq system-type 'linux)) )
-(setq *unix* (or *linux* (eq system-type 'usg-unix-v) (eq system-type 'berkeley-unix)) )
-(setq *linux-x* (and window-system *linux*) )
-(setq *xemacs* (featurep 'xemacs) )
-(setq *emacs23* (and (not *xemacs*) (or (>= emacs-major-version 23))) )
-(setq *emacs24* (and (not *xemacs*) (or (>= emacs-major-version 24))) )
-(setq *no-memory* (cond
-                   (*is-a-mac*
-                    (< (string-to-number (nth 1 (split-string (shell-command-to-string "sysctl hw.physmem")))) 4000000000))
-                   (*linux* nil)
-                   (t nil)
-                   ))
+(package-initialize)
+;;disable backup file
+(setq make-backup-files nil)
 
-;----------------------------------------------------------------------------
-; Functions (load all files in defuns-dir)
-; Copied from https://github.com/magnars/.emacs.d/blob/master/init.el
-;----------------------------------------------------------------------------
-(setq defuns-dir (expand-file-name "~/.emacs.d/defuns"))
-(dolist (file (directory-files defuns-dir t "\\w+"))
-  (when (file-regular-p file)
-      (load file)))
-;----------------------------------------------------------------------------
-; Load configs for specific features and modes
-;----------------------------------------------------------------------------
-(require 'init-modeline)
+(setq gc-cons-threshold 100000000)
+(setq inhibit-startup-message t)
 
-;;----------------------------------------------------------------------------
-;; Less GC, more memory
-;;----------------------------------------------------------------------------
-;; By default Emacs will initiate GC every 0.76 MB allocated
-;; (gc-cons-threshold == 800000).
-;; we increase this to 1GB (gc-cons-threshold == 100000000)
-;; @see http://www.gnu.org/software/emacs/manual/html_node/elisp/Garbage-Collection.html
-(setq-default gc-cons-threshold 100000000
-              gc-cons-percentage 0.5)
+(defalias 'yes-or-no-p 'y-or-n-p)
 
-;;----------------------------------------------------------------------------
-;; Load configs for specific features and modes
-;;----------------------------------------------------------------------------
-(require 'cl-lib)
-(require 'init-compat)
-(require 'init-utils)
-(require 'init-site-lisp) ;; Must come before elpa, as it may provide package.el
+(defconst demo-packages
+  '(anzu
+    company
+    duplicate-thing
+    ggtags
+    helm
+    helm-gtags
+    helm-projectile
+    helm-swoop
+    ;; function-args
+    clean-aindent-mode
+    comment-dwim-2
+    dtrt-indent
+    ws-butler
+    iedit
+    yasnippet
+    smartparens
+    projectile
+    volatile-highlights
+    undo-tree
+    zygospore
+    ein ;; add the ein package (Emacs ipython notebook)
+    elpy ;; add the elpy package
+    flycheck ;; add the flycheck package
+    material-theme
+    py-autopep8))
 
-;; win32 auto configuration, assuming that cygwin is installed at "c:/cygwin"
-;; (condition-case nil
-;;     (when *win32*
-;;       ;; (setq cygwin-mount-cygwin-bin-directory "c:/cygwin/bin")
-;;       (setq cygwin-mount-cygwin-bin-directory "c:/cygwin64/bin")
-;;       (require 'setup-cygwin)
-;;       ;; better to set HOME env in GUI
-;;       ;; (setenv "HOME" "c:/cygwin/home/someuser")
-;;       )
-;;   (error
-;;    (message "setup-cygwin failed, continue anyway")
-;;    ))
+(defun install-packages ()
+  "Install all required packages."
+  (interactive)
+  (unless package-archive-contents
+    (package-refresh-contents))
+  (dolist (package demo-packages)
+    (unless (package-installed-p package)
+      (package-install package))))
 
-(require 'idle-require)
+;;copy without selection
+(defun get-point (symbol &optional arg)
+  "get the point"
+  (funcall symbol arg)
+  (point)
+  )
+(defun copy-thing (begin-of-thing end-of-thing &optional arg)
+  "copy thing between beg & end into kill ring"
+  (save-excursion
+    (let ((beg (get-point begin-of-thing 1))
+          (end (get-point end-of-thing arg)))
+      (copy-region-as-kill beg end)))
+  )
+(defun paste-to-mark(&optional arg)
+  "Paste things to mark, or to the prompt in shell-mode"
+  (let ((pasteMe
+         (lambda()
+           (if (string= "shell-mode" major-mode)
+               (progn (comint-next-prompt 25535) (yank))
+             (progn (goto-char (mark)) (yank) )))))
+    (if arg
+        (if (= arg 1)
+            nil
+          (funcall pasteMe))
+      (funcall pasteMe))
+    ))
+;;;copy word
+(defun copy-word (&optional arg)
+  "Copy words at point into kill-ring"
+  (interactive "P")
+  (copy-thing 'backward-word 'forward-word arg)
+  ;;(paste-to-mark arg)
+  )
+;;;copy Line
+(defun copy-line (&optional arg)
+  "Save current line into Kill-Ring without mark the line "
+  (interactive "P")
+  (copy-thing 'beginning-of-line 'end-of-line arg)
+  ;(paste-to-mark arg)
+  )
+;;;copy paragraph
+(defun copy-paragraph (&optional arg)
+  "Copy paragraphes at point"
+  (interactive "P")
+  (copy-thing 'backward-paragraph 'forward-paragraph arg)
+  ;(paste-to-mark arg)
+  )
+;;;copy string
+(defun beginning-of-string(&optional arg)
+  "  "
+  (re-search-backward "[ \t]" (line-beginning-position) 3 1)
+  (if (looking-at "[\t ]")  (goto-char (+ (point) 1)) )
+  )
+(defun end-of-string(&optional arg)
+  " "
+  (re-search-forward "[ \t]" (line-end-position) 3 arg)
+  (if (looking-back "[\t ]") (goto-char (- (point) 1)) )
+  )
 
-(require 'init-elpa)
-(require 'init-exec-path) ;; Set up $PATH
-(require 'init-frame-hooks)
-;; any file use flyspell should be initialized after init-spelling.el
-;; actually, I don't know which major-mode use flyspell.
-(require 'init-spelling)
-(require 'init-xterm)
-(require 'init-osx-keys)
-(require 'init-gui-frames)
-;(require 'init-ido)
-(require 'init-maxframe)
-(require 'init-proxies)
-(require 'init-dired)
-(require 'init-isearch)
-(require 'init-uniquify)
-(require 'init-ibuffer)
-(require 'init-flymake)
-(require 'init-recentf)
-(require 'init-smex)
-(if *emacs24* (require 'init-helm))
-(require 'init-hippie-expand)
-(require 'init-windows)
-(require 'init-sessions)
-(require 'init-fonts)
-(require 'init-git)
-(require 'init-crontab)
-(require 'init-textile)
-(require 'init-markdown)
-(require 'init-csv)
-(require 'init-erlang)
-(require 'init-javascript)
-(when *emacs24*
-  (require 'init-org)
-  (require 'init-org-mime))
-(require 'init-css)
-(require 'init-python-mode)
-(require 'init-haskell)
-(require 'init-ruby-mode)
-(require 'init-lisp)
-(require 'init-elisp)
-(if *emacs24* (require 'init-yasnippet))
-;; Use bookmark instead
-(require 'init-zencoding-mode)
-(require 'init-cc-mode)
-(require 'init-gud)
-(require 'init-cmake-mode)
-(require 'init-csharp-mode)
-(require 'init-linum-mode)
-(require 'init-which-func)
-(require 'init-move-window-buffer)
-;; (require 'init-gist)
-(require 'init-moz)
-(require 'init-gtags)
-;; use evil mode (vi key binding)
-;;(require 'init-evil)
-(require 'init-sh)
-(require 'init-ctags)
-(require 'init-ace-jump-mode)
-(require 'init-bbdb)
-(require 'init-gnus)
-(require 'init-lua-mode)
-(require 'init-workgroups2)
-(require 'init-term-mode)
-(require 'init-web-mode)
-(require 'init-sr-speedbar)
-(require 'init-slime)
-(when *emacs24* (require 'init-company))
-(require 'init-stripe-buffer)
-(require 'init-eim) ;;  cannot be idle-required
-(require 'init-hs-minor-mode)
-;; need statistics of keyfreq asap
-(require 'init-keyfreq)
-;;quick jump
-(require 'quick-jump)
-;;helm-projectile
+(defun thing-copy-string-to-mark(&optional arg)
+  " Try to copy a string and paste it to the mark
+     When used in shell-mode, it will paste string on shell prompt by default "
+  (interactive "P")
+  (copy-thing 'beginning-of-string 'end-of-string arg)
+  ;(paste-to-mark arg)
+  )
+;disable backup file
+(setq make-backup-files nil)
+;;bind helm-find-file as the default
+;;bind helm-M-x as the default
+
+
+(install-packages)
+
+;; this variables must be set before load helm-gtags
+;; you can change to any prefix key of your choice
+(setq helm-gtags-prefix-key "\C-cg")
+
+(add-to-list 'load-path "~/.emacs.d/custom")
+
+(require 'setup-helm)
+(require 'setup-helm-gtags)
+;;(require 'setup-ggtags)
+(require 'setup-cedet)
+(require 'setup-editing)
+(require 'sr-speedbar)
+;;(require 'color-theme)
+;;(color-theme-initialize)
+;;(color-theme-shaman)
+
+(windmove-default-keybindings)
+
+;; function-args
+;; (require 'function-args)
+;; (fa-config-default)
+;; (define-key c-mode-map  [(tab)] 'company-complete)
+;; (define-key c++-mode-map  [(tab)] 'company-complete)
+
+;; company
+(require 'company)
+(add-hook 'after-init-hook 'global-company-mode)
+(delete 'company-semantic company-backends)
+(define-key c-mode-map  [(tab)] 'company-complete)
+(define-key c++-mode-map  [(tab)] 'company-complete)
+;; (define-key c-mode-map  [(control tab)] 'company-complete)
+;; (define-key c++-mode-map  [(control tab)] 'company-complete)
+
+;; company-c-headers
+(add-to-list 'company-backends 'company-c-headers)
+
+;; hs-minor-mode for folding source code
+(add-hook 'c-mode-common-hook 'hs-minor-mode)
+
+;; Available C style:
+;; “gnu”: The default style for GNU projects
+;; “k&r”: What Kernighan and Ritchie, the authors of C used in their book
+;; “bsd”: What BSD developers use, aka “Allman style” after Eric Allman.
+;; “whitesmith”: Popularized by the examples that came with Whitesmiths C, an early commercial C compiler.
+;; “stroustrup”: What Stroustrup, the author of C++ used in his book
+;; “ellemtel”: Popular C++ coding standards as defined by “Programming in C++, Rules and Recommendations,” Erik Nyquist and Mats Henricson, Ellemtel
+;; “linux”: What the Linux developers use for kernel development
+;; “python”: What Python developers use for extension modules
+;; “java”: The default style for java-mode (see below)
+;; “user”: When you want to define your own style
+(setq
+ c-default-style "linux" ;; set style to "linux"
+ )
+
+(global-set-key (kbd "RET") 'newline-and-indent)  ; automatically indent when press RET
+
+;; activate whitespace-mode to view all whitespace characters
+(global-set-key (kbd "C-c w") 'whitespace-mode)
+
+;; show unncessary whitespace that can mess up your diff
+(add-hook 'prog-mode-hook (lambda () (interactive) (setq show-trailing-whitespace 1)))
+
+;; use space to indent by default
+(setq-default indent-tabs-mode nil)
+
+;; set appearance of a tab that is represented by 4 spaces
+(setq-default tab-width 4)
+
+;; Compilation
+(global-set-key (kbd "<f5>") (lambda ()
+                               (interactive)
+                               (setq-local compilation-read-command nil)
+                               (call-interactively 'compile)))
+
+;; setup GDB
+(setq
+ ;; use gdb-many-windows by default
+ gdb-many-windows t
+
+ ;; Non-nil means display source file containing the main routine at startup
+ gdb-show-main t
+ )
+
+;; Package: clean-aindent-mode
+;;(require 'clean-aindent-mode)
+;;(add-hook 'prog-mode-hook 'clean-aindent-mode)
+
+;; Package: dtrt-indent
+;;(require 'dtrt-indent)
+;;(dtrt-indent-mode 1)
+
+;; Package: ws-butler
+(require 'ws-butler)
+(add-hook 'prog-mode-hook 'ws-butler-mode)
+
+;; Package: yasnippet
+(require 'yasnippet)
+(yas-global-mode 1)
+
+;; Package: smartparens
+(require 'smartparens-config)
+(setq sp-base-key-bindings 'paredit)
+(setq sp-autoskip-closing-pair 'always)
+(setq sp-hybrid-kill-entire-symbol nil)
+(sp-use-paredit-bindings)
+
+(show-smartparens-global-mode +1)
+(smartparens-global-mode 1)
+
+;; Package: projejctile
+(require 'projectile)
+(projectile-global-mode)
+(setq projectile-enable-caching t)
+
 (require 'helm-projectile)
-;;cpputils-cmake
-(require 'cpputils-cmake)
+(helm-projectile-on)
+(setq projectile-completion-system 'helm)
+(setq projectile-indexing-method 'alien)
 
-;; misc has some crucial tools I need immediately
-(require 'init-misc)
+;; Package zygospore
+(global-set-key (kbd "C-x 1") 'zygospore-toggle-delete-other-windows)
 
-;; color theme
-(require 'color-theme)
-(require 'color-theme-molokai)
-(color-theme-molokai)
-;; This line must be after color-theme-molokai! Don't know why.
-(setq color-theme-illegal-faces "^\\(w3-\\|dropdown-\\|info-\\|linum\\|yas-\\|font-lock\\)")
-;; (color-theme-select 'color-theme-xp)
-;; (color-theme-xp)
+;;
+(global-set-key (kbd "C-c p") (quote copy-paragraph))
+(global-set-key (kbd "C-c l") (quote copy-line))
+(global-set-key (kbd "C-c w") (quote copy-word))
 
-(setq idle-require-idle-delay 3)
-(setq idle-require-symbols '(init-writting
-                             init-elnode
-                             init-doxygen
-                             init-pomodoro
-                             init-emacspeak
-                             init-artbollocks-mode
-                             init-emacs-w3m
-                             init-semantic))
-(idle-require-mode 1) ;; starts loading
+;;turn on mouse in console mode
+;;(xterm-mouse-mode t)
+(put 'upcase-region 'disabled nil)
 
-;;----------------------------------------------------------------------------
-;; Variables configured via the interactive 'customize' interface
-;;----------------------------------------------------------------------------
-(if (file-exists-p "~/.emacs.d/.custom.el") (load-file "~/.emacs.d/.custom.el"))
+(defun my-c++-mode-hook ()
+  (setq c-basic-offset 4)
+  (c-set-offset 'substatement-open 0))
+(add-hook 'c++-mode-hook 'my-c++-mode-hook)
 
-(when (require 'time-date nil t)
-   (message "Emacs startup time: %d seconds."
-    (time-to-seconds (time-since emacs-load-start-time)))
-   )
+;;Python part start
+(custom-set-variables
+ ;; custom-set-variables was added by Custom.
+ ;; If you edit it by hand, you could mess it up, so be careful.
+ ;; Your init file should contain only one such instance.
+ ;; If there is more than one, they won't work right.
+ '(package-selected-packages (quote (material-theme better-defaults))))
+(custom-set-faces
+ ;; custom-set-faces was added by Custom.
+ ;; If you edit it by hand, you could mess it up, so be careful.
+ ;; Your init file should contain only one such instance.
+ ;; If there is more than one, they won't work right.
+ )
+;;enalbe elpy
+(elpy-enable)
 
-;;----------------------------------------------------------------------------
-;; Locales (setting them earlier in this file doesn't work in X)
-;;----------------------------------------------------------------------------
-(require 'init-locales)
+;;setup flycheck
+(when (require 'flycheck nil t)
+  (setq elpy-modules (delq 'elpy-module-flymake elpy-modules))
+  (add-hook 'elpy-mode-hook 'flycheck-mode))
 
-;;; Local Variables:
-;;; no-byte-compile: t
-;;; End:
-(put 'erase-buffer 'disabled nil)
+;;enable ipython
+(elpy-use-ipython)
 
+;; enable autopep8 formatting on save
+(require 'py-autopep8)
+(add-hook 'elpy-mode-hook 'py-autopep8-enable-on-save)
+
+;;python end
